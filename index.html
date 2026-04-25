@@ -48,6 +48,53 @@
         font-size: 1.5rem;
       }
 
+      .tabs {
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+        background: var(--primary-dark);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .tab {
+        flex: 1;
+        padding: 12px 10px;
+        color: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 14px;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      .tab:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .tab.active {
+        color: white;
+        background: rgba(255, 255, 255, 0.2);
+        font-weight: 600;
+      }
+
+      .page-section {
+        display: none;
+      }
+      .page-section.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
       .container {
         padding: 1rem;
         max-width: 600px;
@@ -312,132 +359,202 @@
   <body>
     <header>
       <h1>🌿 PlantScan</h1>
+      <div class="tabs">
+        <div class="tab active" data-tab="home">Home</div>
+        <div class="tab" data-tab="scanner">Scanner</div>
+        <div class="tab" data-tab="learning">Learning Hub</div>
+      </div>
     </header>
 
     <main class="container">
-      <div id="model-status"></div>
-      <div class="info-badge" id="loading-badge">
-        Downloading AI models... This may take a moment.
-      </div>
-
-      <div class="camera-container">
-        <video id="video" autoplay playsinline></video>
-        <canvas id="canvas" style="display: none"></canvas>
-        <img id="previewImage" style="display: none" alt="Captured preview" />
-      </div>
-
-      <button class="btn" id="btn-capture" disabled>Capture Photo</button>
-      <label
-        for="file-upload"
-        class="btn btn-secondary"
-        style="display: flex; align-items: center; justify-content: center"
-      >
-        Choose from Gallery
-      </label>
-      <input
-        type="file"
-        id="file-upload"
-        accept="image/*"
-        style="display: none"
-      />
-
-      <div class="spinner" id="spinner"></div>
-
-      <div id="results" class="card">
-        <h2>Scan Results</h2>
-
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-          "
-        >
-          <h3 style="margin: 0">🌿 Disease Analysis</h3>
-        </div>
-        <div id="disease-results"></div>
-
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1.5rem;
-            margin-bottom: 8px;
-          "
-        >
-          <h3 style="margin: 0">🌳 Tree Species</h3>
-        </div>
-        <div id="tree-results"></div>
-
-        <!-- Train Custom Tree Feature -->
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 1.5rem 0" />
-        <h3 style="margin-top: 0">
-          🎓 Train Custom Tree
-          <span class="demo-badge" style="background: #2196f3">On-Device</span>
-        </h3>
-        <p
-          style="font-size: 13px; color: #666; margin-top: 0; line-height: 1.4"
-        >
-          Point your camera at a new tree and click "Learn" to teach the model
-          its species right here in your browser!
-        </p>
-        <div style="display: flex; gap: 8px; margin-bottom: 8px">
-          <input
-            type="text"
-            id="custom-class-name"
-            placeholder="E.g., My Backyard Oak"
-            style="
-              flex: 1;
-              padding: 10px;
-              border: 1px solid #ccc;
-              border-radius: 6px;
-              font-size: 14px;
-            "
-          />
+      <!-- Home View -->
+      <div id="home-view" class="page-section active">
+        <div class="card" style="display: block; text-align: center">
+          <h2>Welcome to PlantScan</h2>
+          <p style="font-size: 15px; line-height: 1.6; color: #555">
+            Identify plants, trees, and diseases with AI. Learn how to treat and
+            prevent common issues instantly from your device.
+          </p>
           <button
-            id="btn-train-class"
             class="btn"
-            style="width: auto; padding: 10px 16px; margin: 0"
+            style="margin-top: 1rem"
+            onclick="switchTab('scanner')"
           >
-            Learn (0)
+            Open Scanner
+          </button>
+          <button class="btn btn-secondary" onclick="switchTab('learning')">
+            Explore Learning Hub
           </button>
         </div>
-        <p
-          id="train-status"
-          style="font-size: 12px; color: #2196f3; margin: 0; display: none"
-        >
-          Model updated!
-        </p>
-
-        <button
-          class="btn btn-secondary"
-          id="btn-reset"
-          style="margin-top: 1.5rem"
-        >
-          Scan Another
-        </button>
       </div>
 
-      <div id="history" class="card history-card">
-        <div class="history-header">
-          <h3>Recent Scans</h3>
-          <button
-            id="btn-clear-history"
-            class="btn btn-secondary"
+      <!-- Scanner View -->
+      <div id="scanner-view" class="page-section">
+        <div id="model-status"></div>
+        <div class="info-badge" id="loading-badge">
+          Downloading AI models... This may take a moment.
+        </div>
+
+        <div class="camera-container">
+          <video id="video" autoplay playsinline></video>
+          <canvas id="canvas" style="display: none"></canvas>
+          <img id="previewImage" style="display: none" alt="Captured preview" />
+        </div>
+
+        <button class="btn" id="btn-capture" disabled>Capture Photo</button>
+        <label
+          for="file-upload"
+          class="btn btn-secondary"
+          style="display: flex; align-items: center; justify-content: center"
+        >
+          Choose from Gallery
+        </label>
+        <input
+          type="file"
+          id="file-upload"
+          accept="image/*"
+          style="display: none"
+        />
+
+        <div class="spinner" id="spinner"></div>
+
+        <div id="results" class="card">
+          <h2>Scan Results</h2>
+
+          <div
             style="
-              width: auto;
-              padding: 6px 12px;
-              font-size: 12px;
-              min-height: auto;
-              margin: 0;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 8px;
             "
           >
-            Clear
+            <h3 style="margin: 0">🌿 Disease Analysis</h3>
+          </div>
+          <div id="disease-results"></div>
+
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-top: 1.5rem;
+              margin-bottom: 8px;
+            "
+          >
+            <h3 style="margin: 0">🌳 Tree Species</h3>
+          </div>
+          <div id="tree-results"></div>
+
+          <!-- Train Custom Tree Feature -->
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 1.5rem 0" />
+          <h3 style="margin-top: 0">
+            🎓 Train Custom Tree
+            <span class="demo-badge" style="background: #2196f3"
+              >On-Device</span
+            >
+          </h3>
+          <p
+            style="
+              font-size: 13px;
+              color: #666;
+              margin-top: 0;
+              line-height: 1.4;
+            "
+          >
+            Point your camera at a new tree and click "Learn" to teach the model
+            its species right here in your browser!
+          </p>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px">
+            <input
+              type="text"
+              id="custom-class-name"
+              placeholder="E.g., My Backyard Oak"
+              style="
+                flex: 1;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                font-size: 14px;
+              "
+            />
+            <button
+              id="btn-train-class"
+              class="btn"
+              style="width: auto; padding: 10px 16px; margin: 0"
+            >
+              Learn (0)
+            </button>
+          </div>
+          <p
+            id="train-status"
+            style="font-size: 12px; color: #2196f3; margin: 0; display: none"
+          >
+            Model updated!
+          </p>
+
+          <button
+            class="btn btn-secondary"
+            id="btn-reset"
+            style="margin-top: 1.5rem"
+          >
+            Scan Another
           </button>
         </div>
-        <div id="history-list"></div>
+
+        <div id="history" class="card history-card">
+          <div class="history-header">
+            <h3>Recent Scans</h3>
+            <button
+              id="btn-clear-history"
+              class="btn btn-secondary"
+              style="
+                width: auto;
+                padding: 6px 12px;
+                font-size: 12px;
+                min-height: auto;
+                margin: 0;
+              "
+            >
+              Clear
+            </button>
+          </div>
+          <div id="history-list"></div>
+        </div>
+      </div>
+      <!-- End Scanner View -->
+
+      <!-- Learning Hub View -->
+      <div id="learning-view" class="page-section">
+        <div class="card" style="display: block">
+          <h2>📚 Learning Hub</h2>
+          <p style="font-size: 15px; line-height: 1.6; color: #555">
+            Explore comprehensive guides on plant care, tree species, and
+            disease management.
+          </p>
+
+          <h3
+            style="
+              margin-top: 1.5rem;
+              border-bottom: 2px solid #eee;
+              padding-bottom: 8px;
+            "
+          >
+            Plant Diseases & Treatments
+          </h3>
+          <div id="learning-diseases-list"></div>
+
+          <h3
+            style="
+              margin-top: 2rem;
+              border-bottom: 2px solid #eee;
+              padding-bottom: 8px;
+            "
+          >
+            Common Tree Species
+          </h3>
+          <div id="learning-trees-list"></div>
+        </div>
       </div>
     </main>
 
@@ -535,10 +652,107 @@
 
       // Initialize the application
       async function init() {
+        setupTabs();
+        populateLearningHub();
         loadHistory();
         setupModal();
-        await startCamera();
         await loadModels();
+      }
+
+      function setupTabs() {
+        const tabs = document.querySelectorAll(".tab");
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => {
+            switchTab(tab.getAttribute("data-tab"));
+          });
+        });
+      }
+
+      window.switchTab = function (tabId) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll(".page-section")
+          .forEach((s) => s.classList.remove("active"));
+
+        const selectedTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+        if (selectedTab) selectedTab.classList.add("active");
+
+        const section = document.getElementById(`${tabId}-view`);
+        if (section) section.classList.add("active");
+
+        if (tabId === "scanner") {
+          // ensure camera is active when switching to scanner
+          if (!stream && !previewImage.src) startCamera();
+        } else {
+          stopCamera();
+        }
+      };
+
+      function populateLearningHub() {
+        const diseasesList = document.getElementById("learning-diseases-list");
+        const treesList = document.getElementById("learning-trees-list");
+
+        // Populate diseases
+        let htmlDeases = "";
+        for (const [name, info] of Object.entries(diseaseData)) {
+          if (name === "Unknown") continue;
+          htmlDeases += `
+            <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:12px;">
+              <h4 style="margin:0 0 8px 0; color:var(--primary-dark);">${name}</h4>
+              <p style="font-size:13px; margin:0 0 6px 0;"><strong>Description:</strong> ${info.description}</p>
+              <p style="font-size:13px; margin:0;"><strong>Treatment:</strong> ${info.treatment}</p>
+            </div>
+          `;
+        }
+        diseasesList.innerHTML = htmlDeases;
+
+        // Populate trees list based on the offline fallback array
+        const treeSpeciesFallback = [
+          "White Oak (Quercus alba)",
+          "Red Maple (Acer rubrum)",
+          "Silver Birch (Betula pendula)",
+          "Weeping Willow (Salix babylonica)",
+          "American Sycamore (Platanus occidentalis)",
+          "Sweetgum (Liquidambar styraciflua)",
+          "Tulip Tree (Liriodendron tulipifera)",
+          "Black Walnut (Juglans nigra)",
+          "American Beech (Fagus grandifolia)",
+          "Shagbark Hickory (Carya ovata)",
+          "Quaking Aspen (Populus tremuloides)",
+          "Eastern White Pine (Pinus strobus)",
+          "Douglas Fir (Pseudotsuga menziesii)",
+          "Blue Spruce (Picea pungens)",
+          "Western Redcedar (Thuja plicata)",
+          "Balsam Fir (Abies balsamea)",
+          "Eastern Hemlock (Tsuga canadensis)",
+          "Loblolly Pine (Pinus taeda)",
+          "Giant Sequoia (Sequoiadendron giganteum)",
+          "Live Oak (Quercus virginiana)",
+          "Southern Magnolia (Magnolia grandiflora)",
+          "Mango Tree (Mangifera indica)",
+          "Banyan Tree (Ficus benghalensis)",
+          "Eucalyptus (Eucalyptus globulus)",
+          "Rubber Tree (Hevea brasiliensis)",
+          "Apple Tree (Malus domestica)",
+          "Peach Tree (Prunus persica)",
+          "Cherry Tree (Prunus avium)",
+          "Lemon Tree (Citrus limon)",
+          "Japanese Maple (Acer palmatum)",
+          "Ginkgo (Ginkgo biloba)",
+        ];
+
+        let htmlTrees = "";
+        // Group them nicely or just list them as tags
+        treeSpeciesFallback.forEach((tree) => {
+          htmlTrees += `
+            <span style="display:inline-block; background:#e8f5e9; color:var(--primary-dark); padding:6px 10px; border-radius:16px; font-size:12px; margin:4px; font-weight:500;">
+              ${tree}
+            </span>
+          `;
+        });
+        treesList.innerHTML = htmlTrees;
       }
 
       function setupModal() {
