@@ -533,7 +533,42 @@
             disease management.
           </p>
 
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              margin-top: 1rem;
+              margin-bottom: 1.5rem;
+            "
+          >
+            <input
+              type="text"
+              id="learning-search"
+              placeholder="Search diseases or trees..."
+              style="
+                flex: 1;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                font-size: 14px;
+              "
+            />
+            <button
+              id="btn-filter-bookmarks"
+              class="btn btn-secondary"
+              style="
+                margin: 0;
+                padding: 10px 16px;
+                width: auto;
+                font-size: 14px;
+              "
+            >
+              🔖 Saved
+            </button>
+          </div>
+
           <h3
+            id="learning-disease-header"
             style="
               margin-top: 1.5rem;
               border-bottom: 2px solid #eee;
@@ -545,6 +580,7 @@
           <div id="learning-diseases-list"></div>
 
           <h3
+            id="learning-tree-header"
             style="
               margin-top: 2rem;
               border-bottom: 2px solid #eee;
@@ -690,21 +726,84 @@
         }
       };
 
+      let learningBookmarks =
+        JSON.parse(localStorage.getItem("plantscan-bookmarks")) || [];
+      let learningSearchQuery = "";
+      let showOnlyBookmarks = false;
+
+      let searchTimeout;
+      document
+        .getElementById("learning-search")
+        .addEventListener("input", (e) => {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            learningSearchQuery = e.target.value.toLowerCase();
+            populateLearningHub();
+          }, 300);
+        });
+
+      document
+        .getElementById("btn-filter-bookmarks")
+        .addEventListener("click", () => {
+          showOnlyBookmarks = !showOnlyBookmarks;
+          const btn = document.getElementById("btn-filter-bookmarks");
+          if (showOnlyBookmarks) {
+            btn.style.background = "var(--primary)";
+            btn.style.color = "white";
+          } else {
+            btn.style.background = "#f5f5f5"; // match btn-secondary
+            btn.style.color = "#333";
+          }
+          populateLearningHub();
+        });
+
+      window.toggleBookmark = function (type, id) {
+        const key = `${type}_${id}`;
+        if (learningBookmarks.includes(key)) {
+          learningBookmarks = learningBookmarks.filter((b) => b !== key);
+        } else {
+          learningBookmarks.push(key);
+        }
+        localStorage.setItem(
+          "plantscan-bookmarks",
+          JSON.stringify(learningBookmarks),
+        );
+        populateLearningHub();
+      };
+
       function populateLearningHub() {
         const diseasesList = document.getElementById("learning-diseases-list");
         const treesList = document.getElementById("learning-trees-list");
 
         // Populate diseases
         let htmlDeases = "";
+        let diseaseCount = 0;
         for (const [name, info] of Object.entries(diseaseData)) {
           if (name === "Unknown") continue;
+          const key = `disease_${name}`;
+          const isBookmarked = learningBookmarks.includes(key);
+
+          if (showOnlyBookmarks && !isBookmarked) continue;
+
+          const searchMatch =
+            name.toLowerCase().includes(learningSearchQuery) ||
+            info.description.toLowerCase().includes(learningSearchQuery);
+          if (!searchMatch) continue;
+
+          diseaseCount++;
           htmlDeases += `
-            <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:12px;">
-              <h4 style="margin:0 0 8px 0; color:var(--primary-dark);">${name}</h4>
+            <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:12px; position:relative;">
+              <button onclick="toggleBookmark('disease', '${name}')" style="position:absolute; top:12px; right:12px; background:none; border:none; font-size:18px; cursor:pointer;" title="Bookmark">
+                ${isBookmarked ? "🔖" : "🤍"}
+              </button>
+              <h4 style="margin:0 0 8px 0; color:var(--primary-dark); padding-right:24px;">${name}</h4>
               <p style="font-size:13px; margin:0 0 6px 0;"><strong>Description:</strong> ${info.description}</p>
               <p style="font-size:13px; margin:0;"><strong>Treatment:</strong> ${info.treatment}</p>
             </div>
           `;
+        }
+        if (diseaseCount === 0) {
+          htmlDeases = `<p style="font-size: 13px; color: #777;">No diseases found matching your criteria.</p>`;
         }
         diseasesList.innerHTML = htmlDeases;
 
@@ -744,14 +843,28 @@
         ];
 
         let htmlTrees = "";
-        // Group them nicely or just list them as tags
+        let treeCount = 0;
         treeSpeciesFallback.forEach((tree) => {
+          const key = `tree_${tree}`;
+          const isBookmarked = learningBookmarks.includes(key);
+
+          if (showOnlyBookmarks && !isBookmarked) return;
+          if (!tree.toLowerCase().includes(learningSearchQuery)) return;
+
+          treeCount++;
           htmlTrees += `
-            <span style="display:inline-block; background:#e8f5e9; color:var(--primary-dark); padding:6px 10px; border-radius:16px; font-size:12px; margin:4px; font-weight:500;">
+            <div style="display:inline-flex; align-items:center; background:#e8f5e9; color:var(--primary-dark); padding:6px 10px; border-radius:16px; font-size:12px; margin:4px; font-weight:500;">
               ${tree}
-            </span>
+              <button onclick="toggleBookmark('tree', '${tree}')" style="background:none; border:none; padding:0; margin-left:6px; cursor:pointer;" title="Bookmark">
+                ${isBookmarked ? "🔖" : "🤍"}
+              </button>
+            </div>
           `;
         });
+
+        if (treeCount === 0) {
+          htmlTrees = `<p style="font-size: 13px; color: #777;">No trees found matching your criteria.</p>`;
+        }
         treesList.innerHTML = htmlTrees;
       }
 

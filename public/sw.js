@@ -1,4 +1,4 @@
-const CACHE_NAME = 'plantscan-v2';
+const CACHE_NAME = 'plantscan-v4';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -16,6 +16,13 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  if (event.request.mode === 'navigate' || event.request.url.includes('index.html')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then(response => {
