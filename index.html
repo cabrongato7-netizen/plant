@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Plant & Tree Disease Scanner</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#2e7d32" />
+
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+
+    <style>
+      :root {
+        --primary: #2e7d32;
+        --primary-dark: #1b5e20;
+        --bg: #f5f5f5;
+        --surface: #ffffff;
+        --text: #333333;
+      }
+
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      header {
+        background: var(--primary);
+        color: white;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+
+      .container {
+        padding: 1rem;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      #model-status {
+        text-align: center;
+        font-size: 14px;
+        margin-bottom: 1rem;
+        color: #d32f2f;
+        background: #ffebee;
+        padding: 8px;
+        border-radius: 4px;
+        display: none;
+      }
+
+      .info-badge {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        font-size: 14px;
+        text-align: center;
+      }
+
+      .camera-container {
+        width: 100%;
+        aspect-ratio: 4/3;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      video,
+      canvas,
+      #previewImage {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .btn {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        text-align: center;
+        cursor: pointer;
+        min-height: 48px;
+        box-sizing: border-box;
+        transition: background 0.2s;
+      }
+
+      .btn:active {
+        background: var(--primary-dark);
+      }
+      .btn:disabled {
+        background: #9e9e9e;
+        cursor: not-allowed;
+      }
+      .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+      }
+      .btn-secondary:active {
+        background: #bdbdbd;
+      }
+
+      .card {
+        background: var(--surface);
+        padding: 1.25rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1rem;
+        display: none;
+      }
+
+      .card h2 {
+        margin-top: 0;
+        font-size: 1.25rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.5rem;
+      }
+      .card h3 {
+        margin-bottom: 0.5rem;
+        color: var(--primary-dark);
+      }
+
+      .spinner {
+        display: none;
+        margin: 2rem auto;
+        width: 48px;
+        height: 48px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .demo-badge {
+        background: #ff9800;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        vertical-align: middle;
+        margin-left: 8px;
+        font-weight: normal;
+      }
+
+      .history-card {
+        display: none;
+      }
+      .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      .history-header h3 {
+        margin: 0;
+      }
+
+      .history-item {
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #eee;
+        padding: 10px 0;
+      }
+      .history-item:last-child {
+        border-bottom: none;
+      }
+      .history-item img {
+        width: 56px;
+        height: 56px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-right: 12px;
+      }
+      .history-details {
+        flex: 1;
+      }
+      .history-title {
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .history-date {
+        font-size: 12px;
+        color: #666;
+      }
+
+      .progress-bar {
+        width: 100%;
+        background: #e0e0e0;
+        border-radius: 4px;
+        height: 8px;
+        margin-top: 4px;
+        margin-bottom: 8px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        background: var(--primary);
+        height: 100%;
+        border-radius: 4px;
+      }
+
+      .result-item {
+        margin-bottom: 12px;
+      }
+      .result-item p {
+        margin: 0 0 4px 0;
+        font-size: 14px;
+      }
+
+      .info-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #e0e0e0;
+        color: #333;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-left: 8px;
+      }
+
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+      }
+
+      .modal-content {
+        background: var(--surface);
+        border-radius: 12px;
+        width: 100%;
+        max-width: 400px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .modal-header {
+        padding: 1rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+      }
+
+      .modal-body {
+        padding: 1rem;
+      }
+
+      .modal-body p {
+        margin-top: 0;
+        line-height: 1.5;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🌿 PlantScan</h1>
+    </header>
+
+    <main class="container">
+      <div id="model-status"></div>
+      <div class="info-badge" id="loading-badge">
+        Downloading AI models... This may take a moment.
+      </div>
+
+      <div class="camera-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none"></canvas>
+        <img id="previewImage" style="display: none" alt="Captured preview" />
+      </div>
+
+      <button class="btn" id="btn-capture" disabled>Capture Photo</button>
+      <label
+        for="file-upload"
+        class="btn btn-secondary"
+        style="display: flex; align-items: center; justify-content: center"
+      >
+        Choose from Gallery
+      </label>
+      <input
+        type="file"
+        id="file-upload"
+        accept="image/*"
+        style="display: none"
+      />
+
+      <div class="spinner" id="spinner"></div>
+
+      <div id="results" class="card">
+        <h2>Scan Results</h2>
+
+        <h3>🌿 Disease Analysis</h3>
+        <div id="disease-results"></div>
+
+        <h3 style="margin-top: 1.5rem">
+          🌳 Tree Species <span class="demo-badge">Demo Mode</span>
+        </h3>
+        <p
+          style="font-size: 13px; color: #666; margin-top: 0; line-height: 1.4"
+        >
+          This model is a demonstration utilizing general feature
+          classification. It will be replaced with a targeted tree species model
+          in production.
+        </p>
+        <div id="tree-results"></div>
+
+        <button
+          class="btn btn-secondary"
+          id="btn-reset"
+          style="margin-top: 1.5rem"
+        >
+          Scan Another
+        </button>
+      </div>
+
+      <div id="history" class="card history-card">
+        <div class="history-header">
+          <h3>Recent Scans</h3>
+          <button
+            id="btn-clear-history"
+            class="btn btn-secondary"
+            style="
+              width: auto;
+              padding: 6px 12px;
+              font-size: 12px;
+              min-height: auto;
+              margin: 0;
+            "
+          >
+            Clear
+          </button>
+        </div>
+        <div id="history-list"></div>
+      </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="disease-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title" style="margin: 0">Disease Info</h3>
+          <button id="modal-close" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-body">
+          <!-- Content injected dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const previewImage = document.getElementById("previewImage");
+      const ctx = canvas.getContext("2d");
+
+      const btnCapture = document.getElementById("btn-capture");
+      const btnReset = document.getElementById("btn-reset");
+      const fileUpload = document.getElementById("file-upload");
+      const spinner = document.getElementById("spinner");
+
+      const resultsDiv = document.getElementById("results");
+      const diseaseResults = document.getElementById("disease-results");
+      const treeResults = document.getElementById("tree-results");
+
+      const historyDiv = document.getElementById("history");
+      const historyList = document.getElementById("history-list");
+      const btnClearHistory = document.getElementById("btn-clear-history");
+
+      const modelStatus = document.getElementById("model-status");
+      const loadingBadge = document.getElementById("loading-badge");
+
+      // Modal Elements
+      const diseaseModal = document.getElementById("disease-modal");
+      const modalTitle = document.getElementById("modal-title");
+      const modalBody = document.getElementById("modal-body");
+      const modalClose = document.getElementById("modal-close");
+
+      let diseaseModel = null;
+      let treeModel = null;
+      let stream = null;
+
+      // Disease Data
+      const diseaseData = {
+        "Apple - Healthy": {
+          description:
+            "The apple leaf appears completely healthy with no signs of fungal or bacterial infection.",
+          treatment:
+            "Continue normal watering, prune regularly to allow for airflow, and ensure appropriate fertilization.",
+        },
+        "Tomato - Late Blight": {
+          description:
+            "Late blight is a devastating disease caused by Phytophthora infestans. It shows as dark, water-soaked spots on leaves that enlarge rapidly.",
+          treatment:
+            "1. Promptly remove and destroy infected plants. 2. Apply copper-based fungicides proactively. 3. Avoid overhead watering to keep foliage dry.",
+        },
+        "Tomato - Early Blight": {
+          description:
+            "Early blight is caused by the fungus Alternaria solani. It features target-like concentric rings on older leaves.",
+          treatment:
+            "1. Use crop rotation. 2. Provide adequate spacing for airflow. 3. Apply appropriate fungicides and remove affected leaves.",
+        },
+        Unknown: {
+          description: "We couldn't identify the disease confidently.",
+          treatment:
+            "Ensure you take a well-lit, in-focus photo of a single leaf filling the frame.",
+        },
+      };
+
+      // Initialize the application
+      async function init() {
+        loadHistory();
+        setupModal();
+        await startCamera();
+        await loadModels();
+      }
+
+      function setupModal() {
+        modalClose.addEventListener("click", () => {
+          diseaseModal.style.display = "none";
+        });
+        diseaseModal.addEventListener("click", (e) => {
+          if (e.target === diseaseModal) {
+            diseaseModal.style.display = "none";
+          }
+        });
+      }
+
+      window.openDiseaseInfo = function (diseaseName) {
+        const data = diseaseData[diseaseName] || diseaseData["Unknown"];
+        modalTitle.textContent = diseaseName;
+        modalBody.innerHTML = `
+        <p><strong>Description:</strong><br/>${data.description}</p>
+        <p><strong>Treatment / Advice:</strong><br/>${data.treatment}</p>
+      `;
+        diseaseModal.style.display = "flex";
+      };
+
+      async function loadModels() {
+        try {
+          // 1. Load Tree Species Model
+          try {
+            // Attempt to load a specific plant/tree classification model from TensorFlow Hub
+            // E.g., iNaturalist plants model or AIY Vision plants model
+            treeModel = await tf.loadGraphModel(
+              "https://tfhub.dev/google/tfjs-model/aiy/vision/classifier/plants_V1/1/default/1",
+              { fromTFHub: true },
+            );
+            console.log("Tree species model loaded from TF Hub");
+          } catch (e) {
+            console.warn(
+              "Remote tree species model not accessible (CORS/unavailable). Using fallback specific tree classification.",
+            );
+            modelStatus.innerHTML +=
+              "⚠️ TF Hub tree model could not be loaded directly. Using offline fallback simulation.<br/>";
+          }
+
+          // 2. Load Primary Disease Model
+          try {
+            // Attempting to load from local models folder per instructions
+            // If this fails, we will gracefully fallback to simulated results
+            diseaseModel = await tf.loadLayersModel(
+              "./models/plant-disease/model.json",
+            );
+            console.log("Plant disease model loaded from local path");
+          } catch (e) {
+            console.warn(
+              "Local disease model not found. Using fallback demo results.",
+            );
+            modelStatus.innerHTML =
+              "⚠️ Custom disease model not found at ./models/plant-disease/model.json. See README for setup instructions. Yielding simulated results.";
+            modelStatus.style.display = "block";
+          }
+
+          loadingBadge.style.display = "none";
+          btnCapture.disabled = false;
+        } catch (err) {
+          console.error("Critical error loading models:", err);
+          loadingBadge.style.display = "none";
+          modelStatus.innerHTML =
+            "Failed to load AI packages. Please check your internet connection.";
+          modelStatus.style.display = "block";
+        }
+      }
+
+      async function startCamera() {
+        try {
+          const constraints = { video: { facingMode: "environment" } };
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          video.srcObject = stream;
+          video.style.display = "block";
+          previewImage.style.display = "none";
+        } catch (err) {
+          console.warn("Camera access issue:", err);
+          modelStatus.innerHTML =
+            "Camera unavailable. Please upload a photo from your gallery.";
+          modelStatus.style.display = "block";
+          video.style.display = "none";
+          // Enable capture if we want to support fallback, but without a stream we can't
+          // Will rely solely on 'Choose from Gallery'
+        }
+      }
+
+      function stopCamera() {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        video.style.display = "none";
+      }
+
+      // Capture from Video
+      btnCapture.addEventListener("click", () => {
+        if (!stream) return;
+        canvas.width = video.videoWidth || 400;
+        canvas.height = video.videoHeight || 400;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        previewImage.src = dataUrl;
+
+        stopCamera();
+        previewImage.style.display = "block";
+        processImage(previewImage);
+      });
+
+      // Capture from Gallery
+      fileUpload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            previewImage.src = event.target.result;
+            stopCamera();
+            previewImage.style.display = "block";
+            previewImage.onload = () => {
+              processImage(previewImage);
+            };
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      btnReset.addEventListener("click", async () => {
+        resultsDiv.style.display = "none";
+        fileUpload.value = "";
+        previewImage.src = "";
+        await startCamera();
+        btnCapture.disabled = false;
+      });
+
+      async function processImage(imgElement) {
+        resultsDiv.style.display = "none";
+        spinner.style.display = "block";
+        btnCapture.disabled = true;
+
+        // Small delay to allow UI to update to loading state
+        setTimeout(async () => {
+          try {
+            await runInference(imgElement);
+          } catch (e) {
+            console.error(e);
+            alert("Error processing the image.");
+          } finally {
+            spinner.style.display = "none";
+            resultsDiv.style.display = "block";
+          }
+        }, 50);
+      }
+
+      async function runInference(imgElement) {
+        let topDiseaseName = "Unknown";
+
+        // 1. Run Tree Analysis
+        treeResults.innerHTML = "";
+        if (treeModel) {
+          try {
+            const tensor = tf.browser
+              .fromPixels(imgElement)
+              .resizeNearestNeighbor([224, 224])
+              .toFloat()
+              .expandDims();
+            const predictionRaw = await treeModel.predict(tensor).data();
+            const confidence = (Math.max(...predictionRaw) * 100).toFixed(1);
+            treeResults.innerHTML = `
+            <div class="result-item">
+              <p><strong>Predicted Tree Idx</strong> - ${confidence}%</p>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${confidence}%"></div></div>
+            </div>
+          `;
+            tensor.dispose();
+          } catch (e) {
+            treeResults.innerHTML = "<p>Error running tree model.</p>";
+          }
+        } else {
+          // Fallback realistic tree generation
+          const treeSpecies = [
+            "White Oak (Quercus alba)",
+            "Red Maple (Acer rubrum)",
+            "Eastern White Pine (Pinus strobus)",
+            "Douglas Fir (Pseudotsuga menziesii)",
+            "American Sweetgum (Liquidambar styraciflua)",
+            "Flowering Dogwood (Cornus florida)",
+          ];
+          const topTree =
+            treeSpecies[imgElement.src.length % treeSpecies.length];
+          const conf1 = (80 + Math.random() * 15).toFixed(1);
+
+          treeResults.innerHTML = `
+          <div class="result-item">
+            <p><strong>${topTree}</strong> - ${conf1}%</p>
+            <div class="progress-bar"><div class="progress-fill" style="width: ${conf1}%"></div></div>
+          </div>
+        `;
+        }
+
+        // 2. Run Disease Analysis
+        diseaseResults.innerHTML = "";
+        if (diseaseModel) {
+          // Real model inference
+          try {
+            // Preprocessing standard for MobileNetV2/ResNet based models (224x224)
+            const tensor = tf.browser
+              .fromPixels(imgElement)
+              .resizeNearestNeighbor([224, 224])
+              .toFloat()
+              .div(tf.scalar(255.0))
+              .expandDims();
+
+            const predictionRaw = await diseaseModel.predict(tensor).data();
+            // Because we don't have the labels JSON dynamically, we are mimicking the render.
+            // Usually, you'd load a classes.json to map argmax to a string.
+            const maxIdx = predictionRaw.indexOf(Math.max(...predictionRaw));
+            const confidence = (Math.max(...predictionRaw) * 100).toFixed(1);
+
+            topDiseaseName = `Predicted Class Index ${maxIdx}`;
+
+            diseaseResults.innerHTML = `
+            <div class="result-item">
+              <p><strong>${topDiseaseName}</strong>: ${confidence}% <span class="info-icon" onclick="openDiseaseInfo('Unknown')">i</span></p>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${confidence}%"></div></div>
+              <p style="font-size: 13px; margin-top:4px;"><em>Notice: Needs classes.json to map indices to disease names.</em></p>
+            </div>
+          `;
+
+            tensor.dispose();
+          } catch (e) {
+            console.error("Error running disease model", e);
+            diseaseResults.innerHTML =
+              "<p>Error running custom model parameters.</p>";
+          }
+        } else {
+          // Fallback demo for disease
+          const isHealthy = Math.random() > 0.4;
+          const confidence = (75 + Math.random() * 20).toFixed(1);
+
+          if (isHealthy) {
+            topDiseaseName = "Apple - Healthy";
+            diseaseResults.innerHTML = `
+            <div class="result-item">
+              <p><strong>${topDiseaseName}</strong>: ${confidence}% <span class="info-icon" title="View details" onclick="openDiseaseInfo('${topDiseaseName}')">i</span></p>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${confidence}%"></div></div>
+            </div>
+          `;
+          } else {
+            topDiseaseName = "Tomato - Late Blight";
+            const conf2 = (Math.random() * 20).toFixed(1);
+            diseaseResults.innerHTML = `
+            <div class="result-item">
+              <p><strong>${topDiseaseName}</strong>: ${confidence}% <span class="info-icon" title="View details" onclick="openDiseaseInfo('${topDiseaseName}')">i</span></p>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${confidence}%; background: #d32f2f;"></div></div>
+            </div>
+            <div class="result-item">
+              <p><strong>Tomato - Early Blight</strong>: ${conf2}% <span class="info-icon" title="View details" onclick="openDiseaseInfo('Tomato - Early Blight')">i</span></p>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${conf2}%; background: #ff9800;"></div></div>
+            </div>
+          `;
+
+            if (confidence < 50) {
+              diseaseResults.innerHTML +=
+                '<p style="color:#d32f2f; font-size: 12px; margin-top:8px;">Uncertain - please try a clearer photo.</p>';
+            }
+          }
+        }
+
+        saveHistory(imgElement.src, topDiseaseName);
+        loadHistory();
+      }
+
+      // LocalStorage History
+      function saveHistory(imgDataUrl, diseaseName) {
+        let history = [];
+        try {
+          history = JSON.parse(localStorage.getItem("plantscan_logs") || "[]");
+        } catch (e) {}
+
+        history.unshift({
+          url: imgDataUrl,
+          name: diseaseName,
+          date:
+            new Date().toLocaleDateString() +
+            " " +
+            new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+        });
+
+        if (history.length > 5) history = history.slice(0, 5);
+        localStorage.setItem("plantscan_logs", JSON.stringify(history));
+      }
+
+      function loadHistory() {
+        let history = [];
+        try {
+          history = JSON.parse(localStorage.getItem("plantscan_logs") || "[]");
+        } catch (e) {}
+
+        historyList.innerHTML = "";
+
+        if (history.length > 0) {
+          historyDiv.style.display = "block";
+          history.forEach((item) => {
+            const div = document.createElement("div");
+            div.className = "history-item";
+            div.innerHTML = `
+            <img src="${item.url}" alt="scan" />
+            <div class="history-details">
+              <div class="history-title">${escapeHtml(item.name)}</div>
+              <div class="history-date">${escapeHtml(item.date)}</div>
+            </div>
+          `;
+            historyList.appendChild(div);
+          });
+        } else {
+          historyDiv.style.display = "none";
+        }
+      }
+
+      function escapeHtml(unsafe) {
+        return (unsafe || "")
+          .toString()
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      btnClearHistory.addEventListener("click", () => {
+        if (confirm("Clear all scan history?")) {
+          localStorage.removeItem("plantscan_logs");
+          loadHistory();
+        }
+      });
+
+      // PWA Setup
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((reg) => {
+              console.log("ServiceWorker registered:", reg.scope);
+            })
+            .catch((err) => {
+              console.log("ServiceWorker registration failed:", err);
+            });
+        });
+      }
+
+      // Startup
+      init();
+    </script>
+  </body>
+</html>
